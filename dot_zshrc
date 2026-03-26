@@ -1,5 +1,23 @@
-# Install starship with
-# brew install starship
+# If Homebrew is installed
+# According to Post-installation steps on https://docs.brew.sh/Installation
+# Change path to brew if necessary
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+# For homebrew completions
+# According to https://docs.brew.sh/Shell-Completion
+autoload -Uz compinit
+compinit
+
+# If Starship zsh is installed
+# Installation steps:
+#   brew install starship
+#   mkdir -p ~/.config/
+#   touch ~/.config/starship.toml
+#   starship preset catppuccin-powerline -o ~/.config/starship.toml
+#   brew install font-fira-code-nerd-font
+#
+# Then change the terminal's font to FiraCode Nerd Font Light
+# and enable the following line
 eval "$(starship init zsh)"
 
 # Aliases
