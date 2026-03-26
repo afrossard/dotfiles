@@ -13,7 +13,7 @@ compinit
 #   brew install starship
 #   mkdir -p ~/.config/
 #   touch ~/.config/starship.toml
-#   starship preset catppuccin-powerline -o ~/.config/starship.toml
+#   starship preset pure-preset -o ~/.config/starship.toml
 #   brew install font-fira-code-nerd-font
 #
 # Then change the terminal's font to FiraCode Nerd Font Light
