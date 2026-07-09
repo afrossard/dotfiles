@@ -2,6 +2,15 @@
 
 Personal chezmoi-managed dotfiles.
 
+## Layout
+
+`home/` is the chezmoi source root, named by `.chezmoiroot`, and it is mapped onto `$HOME`.
+Everything outside `home/` describes the repo and is never delivered to a target.
+
+This file is not `home/AGENTS.md`.
+This one holds instructions about this repo; that one is the global agent instruction file, delivered to `~/AGENTS.md` and symlinked to `~/.claude/CLAUDE.md`.
+Edit the right one.
+
 ## Agent skills
 
 ### Issue tracker
