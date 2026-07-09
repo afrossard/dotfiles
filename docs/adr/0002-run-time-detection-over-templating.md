@@ -11,6 +11,6 @@ It produces a concrete rendered file that is easy to inspect, but it requires a 
 ## Consequences
 
 - The repo has no concept of "which machine am I", and neither does the user. There is no machine registry, no per-host branch, no template language.
-- chezmoi's headline feature now buys nothing. Its remaining value is secret injection alone, which has not yet been shown to be needed. See the open questions in `docs/dotfiles-redesign.md`.
+- chezmoi's headline feature now buys nothing, and its other one, secret injection, buys nothing either: this repo holds no secrets. No private key exists on disk, because 1Password serves keys over its agent socket, and the only identifier in the tree is AgileBits' published Apple team ID. chezmoi is nevertheless adopted, for different reasons entirely. See ADR-0003.
 - Detection silently no-ops when a tool is absent, so a broken install presents as a missing feature rather than an error. Accepted deliberately: on an ephemeral target, a missing prompt is not worth failing a container build over.
 - Divergent *values* (as opposed to divergent paths) cannot be expressed as a conditional. An untracked local override file such as `~/.zshrc.local` is the escape hatch.

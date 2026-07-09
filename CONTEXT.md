@@ -27,6 +27,10 @@ Two kinds, differing only in lifetime:
 
 Config flows outward to ephemeral targets and never flows back.
 
+An ephemeral target may still mount a durable volume, so a directory inside it can outlive it.
+Such a directory is not thereby a durable target.
+It never originates a change; it merely fails to forget one, which is why config is applied afresh on every start.
+
 ## Run-time detection
 
 The rule that a config file is byte-identical on every target and discovers its
@@ -45,6 +49,46 @@ Never committed. Absence is always valid.
 
 ## Drift
 
-A tracked config file whose content in the repo no longer matches the content in use on a durable target.
+The state in which a tracked config file's content in the repo does not match the content in use on a durable target.
+
+Drift is always one of two kinds, and they are not symmetric.
+They call for opposite remedies, so a tool or a human that mistakes one for the other destroys work.
 
 Drift is the failure mode this repo exists to prevent.
+
+### Uncaptured edit
+
+A change made directly to a durable target that the repo does not yet have.
+
+This is the dangerous kind, because the change exists in exactly one place and nothing else knows about it.
+An uncaptured edit is the mechanism by which this repo became a stale snapshot of 2023.
+Applying the repo over the target does not reconcile an uncaptured edit; it deletes it.
+
+### Unapplied change
+
+A change present in the repo that a target has not yet received.
+
+This is the benign kind.
+The repo is still the source of truth and the change is merely late.
+Nothing is lost by waiting, and the remedy is to apply the repo over the target.
+
+## Publication
+
+Drift concerns one target and its own copy of the repo.
+Publication concerns the copies of the repo held by different targets.
+A change can be free of drift on the machine where it was made and still be unreachable everywhere else.
+
+### Unpublished change
+
+A change that has been captured into a durable target's copy of the repo but has not reached the shared origin.
+
+No other target can receive it, and it exists on exactly one machine.
+Whether it is merely uncommitted or committed but unpushed makes no difference to anyone else.
+
+### Unfetched change
+
+A change that has reached the shared origin but not a given target's copy of the repo.
+
+A target carrying an unfetched change is not drifted, and looks entirely healthy, because its target files agree with the repo it has.
+Once fetched, an unfetched change becomes an unapplied change.
+Rarely-used durable targets accumulate these silently.
