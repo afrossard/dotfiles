@@ -39,6 +39,7 @@ It is deferred, not rejected. It is a decision about tool installation, and it s
   Measured: a plain `.chezmoi.toml` there is silently ignored, generating no config file at all.
   It carries no template actions beyond the `sourceDir` line above, so it does not reintroduce what ADR-0002 rejected.
   **`chezmoi init` writes the config once.** A target initialised before a setting was added to the template keeps its old config until `chezmoi init` is run again, so adding a setting here does not reach a machine that has already bootstrapped.
+  This is not silent, which is the only reason it is tolerable: chezmoi then warns `config file template has changed, run chezmoi init to regenerate config file` on every subsequent command.
 - `chezmoi generate install.sh` emits a non-interactive installer that derives the source directory from its own location at run time, which is ADR-0002's rule applied to the installer itself.
   Because it does, the *same* installer bootstraps both kinds of target: clone the repo wherever it belongs on that machine, and run `./install.sh`.
   That generated script is committed at the repo root, beside `.chezmoiroot` rather than inside the source root, because the platform looks for it at the root of the clone and because the directory it passes as `--source` is the one `.chezmoiroot` is read from.
@@ -55,11 +56,15 @@ It is deferred, not rejected. It is a decision about tool installation, and it s
   It is chezmoi's own setting, so no guard script of ours is needed.
   Measured on every path: a durable target is asked `.zshrc already exists?` and offered `diff/overwrite/all-overwrite/skip/quit`, so the content can be inspected before anything is lost, and `skip` keeps the file while the rest of the tree still applies; a target with no TTY exits `1` and the pre-existing content survives; a clean target applies silently and exits `0`, so an ephemeral target is unaffected; and an unapplied change to a file chezmoi already wrote is not a prompt, so routine updates are untouched.
   This is what makes user story 19's "fail loudly rather than hang" true, and it enforces ADR-0006 at run time rather than by convention.
-- **When adopting on a machine already in use, answer `overwrite` to `.ssh already exists?`.**
-  `lessInteractive` prompts for pre-existing *directories* too, and `~/.ssh` is one.
-  The safe-looking answer is the wrong one: `skip` leaves `~/.ssh` at whatever mode it had, defeating the `0700` that the `private_` attribute exists to produce and that user story 20 asks for, and it fails silently, because a wrong mode looks like nothing at all until `ssh` refuses the config.
+- **The `private_` attribute reproduces `~/.ssh` at `0700` on a target that lacks it; it does not correct a target that already has it.**
+  The Mac is already `0700`, set by hand years ago, and chezmoi changes nothing there.
+  The attribute exists so that a *fresh* target - a new machine, a container - gets `0700` rather than the `0755` a default umask would give it, because `ssh` refuses a config directory others can read.
+  This is user story 20, and its point is that the mode stops being knowledge someone has to remember.
+- **If `lessInteractive` does prompt `.ssh already exists?`, answer `overwrite`, not `skip`.**
+  Measured: the prompt appears *only* where the directory's mode actually differs from `0700`, so it does not appear on the Mac at all - there, the first `~/.ssh` prompt is for the `config` file inside it.
+  Where it does appear, the safe-looking answer is the wrong one: `skip` leaves the mode as it was, which fails silently, because a wrong mode looks like nothing at all until `ssh` refuses the config.
   `overwrite` on a directory sets its mode and nothing else.
-  Measured: with an unmanaged `known_hosts` and an unmanaged private key inside, `overwrite` left both files untouched and the key still at `0600`, took `~/.ssh` from `0755` to `0700`, and replaced only the managed `config`.
+  Measured: with an unmanaged `known_hosts` and an unmanaged private key inside, `overwrite` left both untouched and the key still at `0600`, took `~/.ssh` from `0755` to `0700`, and replaced only the managed `config`.
   chezmoi does not remove unmanaged files, so `overwrite` on `~/.ssh` cannot eat a key.
 - **The base image must stop writing `~/.zshrc`,** and `lessInteractive` raises the stakes rather than lowering them.
   A container has no TTY, so a base image that writes that file now *fails* the build outright, where before it would have silently lost its own work on a fresh target.
