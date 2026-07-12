@@ -1,0 +1,29 @@
+# chezmoi's own configuration, written to ~/.config/chezmoi/chezmoi.toml by
+# `chezmoi init`. It is not a dotfile: source entries beginning with `.` are
+# reserved by chezmoi and are never delivered to a target.
+#
+# It is a template only because that is the one form chezmoi reads a source-root
+# config from. A plain `.chezmoi.toml` here is silently ignored.
+#
+# `chezmoi init` writes this file once. A target initialised before a setting
+# below was added keeps its old config until `chezmoi init` is run again.
+#
+# Every setting here is a decision, and the reasoning lives in
+# docs/adr/0003-chezmoi-in-default-file-mode.md rather than in this file.
+
+# chezmoi's default, stated because it was chosen rather than defaulted into.
+mode = "file"
+
+# Prompt before overwriting a target chezmoi did not write. Without this, the
+# first apply on a machine already in use destroys that machine's ~/.zshrc
+# silently and exits 0, even with a terminal attached, because chezmoi's "has
+# this changed since I wrote it?" prompt can only fire once chezmoi has written
+# the file. Answer `overwrite` for the ~/.ssh directory: it sets the mode and
+# leaves unmanaged keys alone, whereas `skip` leaves ~/.ssh at 0755.
+lessInteractive = true
+
+# Where this repo was cloned on this target, discovered at `chezmoi init`. The
+# repo names no path. `--source` is not persisted by `init`, so without this
+# every later bare `chezmoi status`, `re-add`, `apply` and `cd` looks in
+# chezmoi's default directory and fails on any target that is not there.
+sourceDir = {{ .chezmoi.sourceDir | quote }}

@@ -23,10 +23,51 @@ It is deferred, not rejected. It is a decision about tool installation, and it s
 
 ## Consequences
 
-- On a durable target the source directory is chezmoi's default, `~/.local/share/chezmoi`, reached with `chezmoi cd`. The repo therefore no longer lives beside its siblings in `~/Documents/git`.
-- On an ephemeral target the source directory is wherever the platform cloned it, which for VS Code and Codespaces is `~/dotfiles`. The repo does not record either path. `chezmoi generate install.sh` emits a non-interactive installer that derives the source directory from its own location at run time, which is ADR-0002's rule applied to the installer itself. That generated script is committed at the repo root, beside `.chezmoiroot` rather than inside the source root, because the platform looks for it at the root of the clone and because the directory it passes as `--source` is the one `.chezmoiroot` is read from. It therefore sits outside the source root and needs no `.chezmoiignore` entry to stay out of `$HOME`.
+- **The source directory is wherever the repo was cloned, on both kinds of target, and the repo names no path.**
+  A durable target's clone goes wherever that machine keeps its git repos, which is not the same path on every machine.
+  An ephemeral target's goes wherever the platform put it, which for VS Code and Codespaces is `~/dotfiles`.
+  Neither path is written down here.
+  This supersedes an earlier decision to adopt chezmoi's default `~/.local/share/chezmoi` on a durable target.
+  That would have exiled an actively developed repo, one carrying its own ADRs, agent skills and issue workflow, into XDG data and away from its siblings, and it buys nothing, because the source directory has to be recorded per target regardless.
+- **The generated config records the source directory it was initialised with: `sourceDir = {{ .chezmoi.sourceDir | quote }}`.**
+  This line is load-bearing, not decorative.
+  Measured against chezmoi 2.71.0: `--source` is *not* persisted by `init`, so without it every later bare `chezmoi status`, `re-add`, `apply` and `cd` looks in chezmoi's default directory and fails on any target that is not there.
+  `chezmoi status` is precisely what the drift indicator runs.
+  chezmoi's own documentation calls this setting "required because Codespaces clones your dotfiles repo to a different one to chezmoi's default".
+  It is ADR-0002's run-time detection applied to the source directory itself: the path is discovered at `chezmoi init` and recorded in the generated config, never in the repo.
+- The settings live in `home/.chezmoi.toml.tmpl`, which is a template only because that is the sole form chezmoi reads a source-root config from.
+  Measured: a plain `.chezmoi.toml` there is silently ignored, generating no config file at all.
+  It carries no template actions beyond the `sourceDir` line above, so it does not reintroduce what ADR-0002 rejected.
+  **`chezmoi init` writes the config once.** A target initialised before a setting was added to the template keeps its old config until `chezmoi init` is run again, so adding a setting here does not reach a machine that has already bootstrapped.
+- `chezmoi generate install.sh` emits a non-interactive installer that derives the source directory from its own location at run time, which is ADR-0002's rule applied to the installer itself.
+  Because it does, the *same* installer bootstraps both kinds of target: clone the repo wherever it belongs on that machine, and run `./install.sh`.
+  That generated script is committed at the repo root, beside `.chezmoiroot` rather than inside the source root, because the platform looks for it at the root of the clone and because the directory it passes as `--source` is the one `.chezmoiroot` is read from.
+  It therefore sits outside the source root and needs no `.chezmoiignore` entry to stay out of `$HOME`.
+  chezmoi's documentation does say to add one, but that advice is written for a repo with no `.chezmoiroot`, where the installer would sit inside the source root.
+  Verified both ways: an `install.sh` inside `home/` is delivered to `~/install.sh`; at the repo root it is not.
 - **The source root is `home/`, named by a `.chezmoiroot` file at the repo root.** chezmoi maps its source root onto `$HOME`, so without this the repo's own `AGENTS.md`, `CONTEXT.md`, `docs/` and `skills-lock.json` are all delivered into the home directory. `AGENTS.md` is the sharp edge: this repo's `AGENTS.md` holds instructions about this repo, `~/AGENTS.md` holds the global agent instructions, and at the source root they are the same path. The two cannot coexist there, and `.chezmoiignore` cannot resolve it, because a file cannot be both ignored and delivered. Measured: with `.chezmoiroot`, `add` and `re-add` write into `home/` and the repo's own files stay out of `$HOME`. Source entries beginning with `.` are reserved by chezmoi and were never at risk, which is why `.claude/` and `.agents/` were already safe.
-- **The base image must stop writing `~/.zshrc`.** This is not tidiness, but the reason is not the one first given here. Measured against chezmoi 2.71.0: on a target carrying no chezmoi persistent state, `chezmoi init --apply` overwrites a pre-existing `~/.zshrc` silently, exits `0`, and needs no TTY. Nothing fails; the base image's work is simply destroyed, and no one is told. The prompt appears only once chezmoi has written the file and it has since changed, when `apply` asks whether the file has changed since chezmoi last wrote it and, finding no TTY, fails. That state is reachable on an ephemeral target, because its persistent state lives at `~/.config/chezmoi/chezmoistate.boltdb` and `CONTEXT.md` notes that a mounted durable volume can outlive the container. So a base image that writes `~/.zshrc` loses its content on a fresh target and hangs the build on a returning one.
+- **`lessInteractive = true` in the generated config, because chezmoi's first apply is otherwise silently destructive.**
+  chezmoi's "has this changed since I wrote it?" prompt can only fire once chezmoi has written the file, and on the first apply it never has.
+  Measured against 2.71.0: adopting this repo on a machine already in use overwrites that machine's `~/.zshrc` and exits `0`, asking nothing, *and a controlling terminal does not save you*.
+  The prompt is not suppressed for want of a TTY; it is never reached.
+  The file it eats is precisely the uncaptured edit this repo exists to protect, and the nine unseen lines in the problem statement are exactly that file.
+  `lessInteractive` widens the prompt to cover pre-existing targets as well as changed ones.
+  It is chezmoi's own setting, so no guard script of ours is needed.
+  Measured on every path: a durable target is asked `.zshrc already exists?` and offered `diff/overwrite/all-overwrite/skip/quit`, so the content can be inspected before anything is lost, and `skip` keeps the file while the rest of the tree still applies; a target with no TTY exits `1` and the pre-existing content survives; a clean target applies silently and exits `0`, so an ephemeral target is unaffected; and an unapplied change to a file chezmoi already wrote is not a prompt, so routine updates are untouched.
+  This is what makes user story 19's "fail loudly rather than hang" true, and it enforces ADR-0006 at run time rather than by convention.
+- **When adopting on a machine already in use, answer `overwrite` to `.ssh already exists?`.**
+  `lessInteractive` prompts for pre-existing *directories* too, and `~/.ssh` is one.
+  The safe-looking answer is the wrong one: `skip` leaves `~/.ssh` at whatever mode it had, defeating the `0700` that the `private_` attribute exists to produce and that user story 20 asks for, and it fails silently, because a wrong mode looks like nothing at all until `ssh` refuses the config.
+  `overwrite` on a directory sets its mode and nothing else.
+  Measured: with an unmanaged `known_hosts` and an unmanaged private key inside, `overwrite` left both files untouched and the key still at `0600`, took `~/.ssh` from `0755` to `0700`, and replaced only the managed `config`.
+  chezmoi does not remove unmanaged files, so `overwrite` on `~/.ssh` cannot eat a key.
+- **The base image must stop writing `~/.zshrc`,** and `lessInteractive` raises the stakes rather than lowering them.
+  A container has no TTY, so a base image that writes that file now *fails* the build outright, where before it would have silently lost its own work on a fresh target.
+  That is the intended trade, and it is user story 19: a failed build is strictly better than an unreported one.
+  But it means the base image's `~/.zshrc` has to actually go, not merely be tolerated.
+  The returning target was already a failure for a different reason: once chezmoi has written the file and something has since changed it, `apply` asks `.zshrc has changed since chezmoi last wrote it?` and, finding no TTY, exits `1` with `could not open a new TTY`.
+  That state is reachable on an ephemeral target, because its persistent state lives at `~/.config/chezmoi/chezmoistate.boltdb` and `CONTEXT.md` notes that a mounted durable volume can outlive the container.
+  Neither path hangs: measured with no controlling terminal, `apply` fails fast rather than waiting, so nothing here is a build-timeout risk.
 - Drift splits into the two kinds named in `CONTEXT.md`, and they are exactly chezmoi's two status columns. A non-blank first column is an *uncaptured edit*; a non-blank second column is an *unapplied change*.
 - **The drift check must never remediate.** The two kinds need opposite remedies and each remedy destroys the other kind. Running `chezmoi apply` over an uncaptured edit deletes it; running `chezmoi re-add` over an unapplied change discards what was pulled. Only a human can tell which was intended.
 - `chezmoi status` exits `0` whether or not it reports drift, so any check must test for empty output rather than an exit code.
