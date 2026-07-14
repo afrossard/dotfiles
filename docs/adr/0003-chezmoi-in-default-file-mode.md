@@ -60,6 +60,11 @@ It is deferred, not rejected. It is a decision about tool installation, and it s
   The Mac is already `0700`, set by hand years ago, and chezmoi changes nothing there.
   The attribute exists so that a *fresh* target - a new machine, a container - gets `0700` rather than the `0755` a default umask would give it, because `ssh` refuses a config directory others can read.
   This is user story 20, and its point is that the mode stops being knowledge someone has to remember.
+- **The `private_` attribute is per-entry, so `config` inside `private_dot_ssh/` needs its own: the source file is `private_config`.**
+  The attribute on the directory sets the directory's mode and says nothing about the files under it.
+  Measured against 2.71.0: with the source named plainly `config`, a fresh target gets `~/.ssh` at `0700` and `~/.ssh/config` at `0644`, world-readable; named `private_config`, it gets `0600`.
+  `ssh` accepts a `0644` config - it refuses only a group- or world-*writable* one - so this fails in the silent direction, which is the same trap as answering `skip` below.
+  The Mac's `~/.ssh/config` was `0600`, set by hand, and adopting the repo as it stood would have quietly relaxed it.
 - **If `lessInteractive` does prompt `.ssh already exists?`, answer `overwrite`, not `skip`.**
   Measured: the prompt appears *only* where the directory's mode actually differs from `0700`, so it does not appear on the Mac at all - there, the first `~/.ssh` prompt is for the `config` file inside it.
   Where it does appear, the safe-looking answer is the wrong one: `skip` leaves the mode as it was, which fails silently, because a wrong mode looks like nothing at all until `ssh` refuses the config.
