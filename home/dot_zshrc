@@ -1,0 +1,63 @@
+# This file has exactly one writer, chezmoi (ADR-0006). Nothing appends to it.
+# Project shell config goes in ~/.zshrc.d/, machine-unique values in ~/.zshrc.local,
+# and tool completions onto fpath.
+
+# Homebrew is at a different path on macOS and Linux and may be absent entirely, so
+# probe rather than assume, and let absence be a missing feature rather than an
+# error (ADR-0002). The shell is named explicitly because $SHELL can still say bash
+# in a container whose login shell has not been changed yet.
+for brewbin in /opt/homebrew/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
+  [[ -x $brewbin ]] && eval "$("$brewbin" shellenv zsh)" && break
+done
+unset brewbin
+
+# brew shellenv already prepends its own site-functions to fpath; this covers the
+# tools that install completions outside a Homebrew prefix.
+[[ -d /usr/local/share/zsh/site-functions ]] &&
+  fpath=(/usr/local/share/zsh/site-functions $fpath)
+
+# Completion functions are autoloaded from fpath. This file evaluates no tool's
+# completion generator and names no tool (ADR-0006). A bare compinit rescans fpath
+# and rewrites the dump; -C trusts an existing dump and skips both the rescan and
+# the security check. Rescan at most once a day.
+# -i is what keeps this non-interactive: on finding a completion directory it deems
+# insecure, compinit's default is to *ask* whether to trust it, which would stall a
+# container build that has no TTY. -i ignores such a directory instead, so the cost
+# is a missing completion rather than a stalled shell. The remedy for an insecure
+# directory is `chmod -R go-w "$(brew --prefix)/share"`, applied to the target.
+autoload -Uz compinit
+zcompdump=${ZDOTDIR:-$HOME}/.zcompdump
+zcompstale=(${zcompdump}(N.mh+24))
+if (( $#zcompstale )); then
+  compinit -i -d "$zcompdump"
+else
+  compinit -C -i -d "$zcompdump"
+fi
+unset zcompdump zcompstale
+
+export PATH="$HOME/.local/bin:$PATH"
+
+# Guarded on 1Password being installed rather than on its agent socket existing, so
+# that a stopped agent fails loudly with an agent error instead of silently handing
+# back a keyless shell.
+op_dir="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password"
+[[ -d $op_dir ]] && export SSH_AUTH_SOCK="$op_dir/t/agent.sock"
+unset op_dir
+
+alias ll='ls -al'
+
+# starship is a tool, so installing it belongs to the target, not here (ADR-0001):
+#   brew install starship
+#   brew install font-fira-code-nerd-font
+# then set the terminal font to FiraCode Nerd Font Light. The font is not optional:
+# the prompt, including the drift indicator, is built from glyphs that render as
+# tofu without it. There is no `starship preset` step any more - ~/.config/starship.toml
+# is tracked here, and regenerating it from a preset would overwrite it.
+command -v starship >/dev/null && eval "$(starship init zsh)"
+
+# Machine-unique values, which run-time detection cannot express (ADR-0002).
+[[ -r ~/.zshrc.local ]] && source ~/.zshrc.local
+
+# Project shell config, dropped in by devcontainers (ADR-0006). Absence is valid.
+for zshrcd in ~/.zshrc.d/*.zsh(N); do source "$zshrcd"; done
+unset zshrcd
