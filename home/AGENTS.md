@@ -15,6 +15,7 @@ These are common instructions for agents across all scenarios.
 - Apply that same high standard to engineering excellence: lint, test failures, and test flakiness. If you see one, even if it is not caused by what you are working on right now, still get it fixed.
 - A repo's scope is bounded by its name. Do not bundle adjacent concerns into a repo because they are convenient to put there; propose a separate repo instead. A repo named `dotfiles` holds dotfiles, not container images or editor GUI state.
 - Do not invent numbered labels for concepts and then expect them to be tracked. Give concepts real names.
+- When asked to propose, show, or compare options, mock them up in prose and wait for a decision. Do not build a working prototype, edit repo files, or run the real tool to find out. Verifying a *tool's behaviour* by running it is still correct; presenting a *design* of symbols, wording, or layout is done by simulating the output.
 
 ## Memory
 
