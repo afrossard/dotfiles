@@ -62,8 +62,33 @@ Read `status`'s **first** column ([CONTEXT.md](CONTEXT.md) defines the terms).
 **Never `chezmoi update` without checking `status` first.**
 It is `git pull` then `apply`, so it deletes an uncaptured edit.
 
+The prompt reads that first column for you, and raises a `⌂` when anything is pending.
+
+```
+⌂l⇡1 ~/Downloads ❯          you edited $HOME; the repo has never seen it
+⌂r⇡2⇣1 ~/work/api main ❯    the dotfiles repo is 2 unpushed, 1 unfetched
+```
+
+`l` is `$HOME` against the repo, `r` the repo against origin, `⇡` has to leave here, `⇣` is waiting to come here.
+The badge never names a remedy, because a glyph that encodes one has to be decoded from memory at the moment you can least afford to get it wrong.
+Run `chezmoi-drift` to be told, in words, what drifted and what to run.
+
 `~/.zshrc` has exactly one writer, this repo ([ADR-0006](docs/adr/0006-zshrc-has-exactly-one-writer.md)).
 Machine-unique values go in `~/.zshrc.local`, project shell config in `~/.zshrc.d/*.zsh`.
 Neither is committed; absence of either is valid.
 
 This repo must stay public: ephemeral targets bootstrap themselves by cloning it over HTTPS with no credentials.
+
+## Tests
+
+The suite builds a throwaway `$HOME`, a real chezmoi source directory and a real git origin, then drives real `chezmoi`, `git` and `starship` against them.
+It asserts on the rendered prompt, because that is where this feature can fail silently: a custom module with no `when` never runs its command and looks exactly like a clean machine.
+
+No target needs any of this.
+`tests/` sits outside `home/`, so it is never delivered, and nothing here is installed on a machine that merely uses the dotfiles.
+It is a dependency of working *on* this repo.
+
+```sh
+brew install bats-core
+bats tests/
+```
