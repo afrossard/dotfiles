@@ -246,10 +246,19 @@ elif [[ -z $upstream ]]; then
   unmeasured+=( "publication state unknown - branch '$branch' has no upstream" )
 fi
 
-for u in $unmeasured; print -r -- $u
-
-if (( ! spoke && ! $#unmeasured )); then
-  print -r -- "✓ in sync - nothing to capture, apply, or publish"
+# The tick speaks only for the axes that were actually read, and it says how far
+# that reaches. `in sync` names all three boundaries, so it is earned only where
+# all three were measured; where publication could not be read, the tick still
+# reports the two that could, because a machine measured clean should be told so
+# rather than left to infer it from silence.
+if (( ! spoke )); then
+  if (( ! $#unmeasured )); then
+    print -r -- "✓ in sync - nothing to capture, apply, or publish"
+  elif (( local_measured )); then
+    print -r -- "✓ nothing to capture or apply"
+  fi
 fi
+
+for u in $unmeasured; print -r -- $u
 
 exit 0

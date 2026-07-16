@@ -110,6 +110,31 @@ setup() { setup_target; }
   refute_contains "in sync" "$output"
 }
 
+@test "an unreadable axis does not silence the axes that were read" {
+  # Measured clean is worth saying. Refusing to overclaim `in sync` must not mean
+  # staying quiet about the two boundaries it did read.
+  git -C "$REPO" checkout -q -b experiment
+  run chezmoi-drift
+  assert_contains "✓ nothing to capture or apply" "$output"
+  assert_contains "publication state unknown" "$output"
+  # The tick still never claims the word it cannot stand behind.
+  refute_contains "publish" "${output%%publication*}"
+}
+
+@test "the tick claims all three boundaries only when all three were read" {
+  run chezmoi-drift
+  assert_contains "✓ in sync - nothing to capture, apply, or publish" "$output"
+}
+
+@test "no tick at all when the local axis itself could not be read" {
+  # Nothing was measured clean, so there is nothing to affirm.
+  chmod 000 "$HOME/.zshrc"
+  run chezmoi-drift
+  chmod 644 "$HOME/.zshrc"
+  assert_contains "drift state unknown" "$output"
+  refute_contains "✓" "$output"
+}
+
 @test "no upstream still reports the axes it can measure" {
   git -C "$REPO" checkout -q -b experiment
   printf 'edited in place\n' >"$HOME/.zshrc"
