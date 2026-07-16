@@ -113,7 +113,17 @@ if [[ -n $repo ]]; then
 
   # The branch name is only ever spoken by the explainer, so it is read there
   # rather than here: this runs on every prompt.
-  upstream=$(git -C $repo rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null)
+  #
+  # The exit code decides, not the output: `git rev-parse` echoes an argument it
+  # cannot resolve straight to stdout. A branch with no upstream, and a detached
+  # HEAD, both print nothing and would survive an emptiness test - but a branch
+  # whose upstream was deleted and pruned prints the literal `@{upstream}` and
+  # exits 128, which reads as an upstream that is fine, and then as 0 ahead and 0
+  # behind from a `rev-list` that failed too. That reports commits which may exist
+  # on this machine alone as published. Reaching it needs `fetch.prune`, which is
+  # one config line away and not managed by this repo.
+  upstream=$(git -C $repo rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) ||
+    upstream=''
 
   if [[ -n $upstream ]]; then
     # A stamp file limits the fetch to once a day, so the prompt never waits on

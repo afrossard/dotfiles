@@ -110,6 +110,29 @@ setup() { setup_target; }
   refute_contains "in sync" "$output"
 }
 
+@test "an upstream that is gone is not an upstream" {
+  # `git rev-parse` echoes an argument it cannot resolve to stdout, so a branch
+  # whose upstream was deleted and pruned prints the literal `@{upstream}` while
+  # exiting 128. Testing that output for emptiness reads it as a healthy upstream,
+  # then reads 0/0 from a rev-list that failed too, and reports commits which may
+  # exist on this machine alone as published.
+  #
+  # Reaching this needs `fetch.prune`, which no target here sets today - it is one
+  # config line away, and git config is not managed by this repo. The guard is one
+  # line; this test is what says why it is there.
+  upstream_goes_away
+  run chezmoi-drift
+  assert_equal "$status" 0
+  assert_contains "publication state unknown" "$output"
+  refute_contains "in sync" "$output"
+}
+
+@test "a gone upstream drops only the marks it cannot measure" {
+  upstream_goes_away
+  printf 'edited in place\n' >"$HOME/.zshrc"
+  assert_badge "⌂l⇡1"
+}
+
 @test "an unreadable axis does not silence the axes that were read" {
   # Measured clean is worth saying. Refusing to overclaim `in sync` must not mean
   # staying quiet about the two boundaries it did read.

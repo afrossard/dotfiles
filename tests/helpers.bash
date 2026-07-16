@@ -85,6 +85,14 @@ other_machine_pushes() {
   git -C "$REPO" fetch -q origin
 }
 
+# What a merged-and-deleted branch becomes once the stale ref is pruned: the
+# upstream is still configured, but the ref it names is gone. Distinct from a
+# branch that never had an upstream, and `git rev-parse` reports the two
+# differently.
+upstream_goes_away() {
+  git -C "$REPO" update-ref -d refs/remotes/origin/main
+}
+
 badge() {
   chezmoi-drift --prompt
 }
