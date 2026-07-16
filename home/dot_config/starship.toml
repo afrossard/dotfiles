@@ -1,6 +1,7 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
+${custom.chezmoi_drift}\
 $username\
 $hostname\
 $directory\
@@ -11,6 +12,33 @@ $cmd_duration\
 $line_break\
 $python\
 $character"""
+
+# The drift indicator (ADR-0003). It is first on the line, ahead of $directory,
+# because it reflects the machine's dotfiles state rather than the current
+# directory; the prompt's left edge moves when drift appears, which is the intended
+# cost of a banner you cannot miss.
+#
+# The command is a tracked dotfile, ~/.local/bin/chezmoi-drift, rather than one long
+# string inlined here, so it is lintable, runnable by hand, and readable by a
+# stranger. ~/.local/bin is on PATH from dot_zshrc, and the module inherits it.
+[custom.chezmoi_drift]
+description = "Uncaptured, unapplied, and unpublished dotfile changes"
+command = "chezmoi-drift --prompt"
+# Measured against starship 1.26.0: a custom module with no `when` never runs its
+# command at all. It computes in 170µs, renders nothing, and logs nothing above
+# debug - indistinguishable from a working indicator on a clean machine. The boolean
+# is starship's own way of saying always, and costs no shell spawn.
+when = true
+# The conditional group is not decoration: without it a clean home emits a stray
+# space into the prompt forever.
+format = "([$output]($style) )"
+# A single colour. Its mere presence means something needs fixing; which remedy is
+# what `chezmoi-drift` is for. An earlier draft coloured it red for an uncaptured
+# edit and yellow otherwise, to carry the one distinction that destroys work without
+# anything being read; that is dropped, because any badge at all already means read
+# it. Yellow rather than red: the badge is an unread notice, not a failed command,
+# and red is already the character's error colour.
+style = "yellow"
 
 [directory]
 style = "blue"

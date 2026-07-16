@@ -1,0 +1,247 @@
+#!/usr/bin/env -S zsh -f
+#
+# Drift indicator. One script, two faces: `--prompt` renders the badge starship
+# shows, and a bare call explains it.
+#
+# It exists because ADR-0003 chose chezmoi's default file mode, in which drift is
+# possible, over symlink mode, in which it is not.
+#
+# It never remediates. The two kinds of drift need opposite remedies and each
+# remedy destroys the other kind, so only a human can tell which was intended.
+#
+# The prompt cannot name a remedy: there is no room, and a glyph that encodes one
+# has to be decoded from memory at the moment you can least afford to get it wrong.
+# So the prompt raises a hand and this command explains.
+#
+# `-f` in the shebang is load-bearing. Without it a shebanged zsh reads zshenv on
+# every prompt, and ADR-0004 has the base image append `brew shellenv` to
+# /etc/zsh/zshenv. PATH is inherited from the shell that spawned starship, so
+# nothing here needs an rc file.
+
+emulate -L zsh
+
+mode=explain
+case ${1-} in
+  --prompt) mode=badge ;;
+  '') ;;
+  -h|--help)
+    print -r -- "usage: chezmoi-drift [--prompt]"
+    print -r -- "  (bare)     explain what has drifted and how to remedy each kind"
+    print -r -- "  --prompt   render the one-line badge for the starship module"
+    exit 0
+    ;;
+  *)
+    print -ru2 -- "chezmoi-drift: unknown argument: $1"
+    exit 2
+    ;;
+esac
+
+if (( $# > 1 )); then
+  print -ru2 -- "chezmoi-drift: unexpected argument: $2"
+  exit 2
+fi
+
+# Not a managed target. The badge stays mute; the bare command says so, because it
+# was asked.
+unmanaged() {
+  [[ $mode == explain ]] && print -r -- "chezmoi is not managing this machine"
+  exit 0
+}
+
+(( $+commands[chezmoi] )) || unmanaged
+src=$(chezmoi source-path 2>/dev/null) || unmanaged
+[[ -d $src ]] || unmanaged
+
+# ---- home against the repo ---------------------------------------------------
+
+typeset -a uncaptured unapplied
+
+# Whether this axis was measured at all, which is not the same as finding nothing.
+# `chezmoi status` exits 0 whether or not it reports drift, so empty output means
+# clean - but it exits non-zero when it cannot look, and its output is empty then
+# too. Measured against 2.71.0: an unreadable target file makes `status` exit 1
+# while `source-path` still exits 0, so this is not caught by the unmanaged guard
+# above. (A corrupt state db is not this case: it fails `source-path` as well, and
+# lands on `unmanaged`.) Treating "could not look" as "nothing there" would report
+# an uncaptured edit as safe, which is the one thing this must never do.
+local_measured=1
+drift_status=$(chezmoi status 2>/dev/null) || local_measured=0
+
+for line in ${(f)drift_status}; do
+  [[ -n $line ]] || continue
+  # chezmoi's first column is the difference between the last state chezmoi wrote
+  # and the actual state; the second is what running apply would do. An uncaptured
+  # edit reads `MM`, not `M `, because apply would indeed change the target - that
+  # is exactly the apply that would delete the edit. So the first column decides,
+  # and each file is counted once. A pattern matching `^.M` would classify an
+  # unapplied change as an uncaptured edit and name the remedy that discards what
+  # you pulled; counting the two columns independently reports every uncaptured
+  # edit as an unapplied change as well, and names both remedies at once.
+  if [[ ${line[1]} != ' ' ]]; then
+    uncaptured+=( ${line[4,-1]} )
+  elif [[ ${line[2]} != ' ' ]]; then
+    unapplied+=( ${line[4,-1]} )
+  fi
+done
+
+# ---- the repo against origin -------------------------------------------------
+
+# The source root is home/, named by .chezmoiroot, so the git top level is its
+# parent. Every remedy below names the top level: `git -C <source root>` would work
+# by accident and read as though home/ were the repo.
+repo=$(git -C $src rev-parse --show-toplevel 2>/dev/null)
+
+typeset -a source_dirty
+ahead=0 behind=0 upstream='' branch=''
+
+if [[ -n $repo ]]; then
+  # `re-add`'d here but not committed is a third boundary the two hops do not name:
+  # the source repo's working tree against its own HEAD. CONTEXT.md classes an
+  # uncommitted-but-captured change as unpublished, so it sits on the `r` side.
+  # Untracked counts: `chezmoi add` of a new dotfile writes an untracked source file,
+  # which is captured and published nowhere.
+  source_dirty=( ${(f)"$(git -C $repo status --porcelain 2>/dev/null)"} )
+  source_dirty=( ${source_dirty:#} )
+
+  # The branch name is only ever spoken by the explainer, so it is read there
+  # rather than here: this runs on every prompt.
+  upstream=$(git -C $repo rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null)
+
+  if [[ -n $upstream ]]; then
+    # A stamp file limits the fetch to once a day, so the prompt never waits on
+    # GitHub, and a rarely-used durable target still learns it is behind.
+    cache=${XDG_CACHE_HOME:-$HOME/.cache}/chezmoi-drift
+    stamp=$cache/fetch
+    fresh=( ${stamp}(N.mh-24) )
+    if (( ! $#fresh )); then
+      # Best-effort, and silent about it. The refresh is a convenience; an
+      # unwritable cache must cost a stale count, not a line of stderr on every
+      # prompt for the rest of time. The stamp is claimed before the fetch runs, so
+      # an unreachable origin costs one attempt a day rather than one per prompt.
+      if mkdir -p $cache 2>/dev/null && touch $stamp 2>/dev/null; then
+        # Detached with its streams closed: it must not hold starship's pipe open.
+        ( git -C $repo fetch --quiet >/dev/null 2>&1 </dev/null & ) >/dev/null 2>&1
+      fi
+    fi
+
+    # Reads the cached ref, so it needs no network of its own.
+    counts=( ${=$(git -C $repo rev-list --left-right --count '@{upstream}...HEAD' 2>/dev/null)} )
+    behind=${counts[1]:-0}
+    ahead=${counts[2]:-0}
+  fi
+fi
+
+# ---- the badge ---------------------------------------------------------------
+
+if [[ $mode == badge ]]; then
+  # Marks in fixed order `l⇡ l⇣ r* r⇡ r⇣`. The hop letter leads its group and is
+  # shared within it, the way a git repo shows `main* ⇡2⇣1`. The arrow is the
+  # direction the change still has to travel, and it means the same on both hops:
+  # up means it has to leave here, down means it is waiting to come here.
+  badge='' l='' r=''
+  (( $#uncaptured )) && l+="⇡$#uncaptured"
+  (( $#unapplied ))  && l+="⇣$#unapplied"
+  [[ -n $l ]] && badge+="l$l"
+  (( $#source_dirty )) && r+='*'
+  (( ahead ))          && r+="⇡$ahead"
+  (( behind ))         && r+="⇣$behind"
+  [[ -n $r ]] && badge+="r$r"
+
+  # Absent whenever nothing is pending, or nothing is measurable. On a branch with
+  # no upstream, `r⇡`/`r⇣` are simply never set: the badge goes silent only on the
+  # axis it genuinely cannot measure.
+  [[ -n $badge ]] && print -r -- "⌂$badge"
+  exit 0
+fi
+
+# ---- the explainer -----------------------------------------------------------
+
+# One block per present mark: a heading, the affected files, and one remedy. No
+# suggested command ever destroys another block's work.
+
+tilde() { print -r -- "${1/#$HOME/~}" }
+
+spoke=0
+
+if (( $#uncaptured )); then
+  if (( $#uncaptured == 1 )); then
+    print -r -- "1 uncaptured edit - edited here, the repo has never seen it:"
+  else
+    print -r -- "$#uncaptured uncaptured edits - edited here, the repo has never seen them:"
+  fi
+  for f in $uncaptured; print -r -- "    $f"
+  print -r -- "    keep it:      chezmoi re-add          (chezmoi apply DELETES it)"
+  print
+  spoke=1
+fi
+
+if (( $#unapplied )); then
+  if (( $#unapplied == 1 )); then
+    print -r -- "1 unapplied change - in the repo, not yet on this machine:"
+  else
+    print -r -- "$#unapplied unapplied changes - in the repo, not yet on this machine:"
+  fi
+  for f in $unapplied; print -r -- "    $f"
+  print -r -- "    apply it:     chezmoi apply"
+  print
+  spoke=1
+fi
+
+if (( $#source_dirty )); then
+  print -r -- "source has uncommitted changes - captured here, not committed:"
+  for f in $source_dirty; print -r -- "    ${f[4,-1]}"
+  print -r -- "    commit them:  git -C $(tilde $repo) commit -a"
+  print
+  spoke=1
+fi
+
+if (( ahead )); then
+  if (( ahead == 1 )); then
+    print -r -- "1 unpublished commit - captured here, reachable from nowhere else:"
+  else
+    print -r -- "$ahead unpublished commits - captured here, reachable from nowhere else:"
+  fi
+  print -r -- "    publish:      git -C $(tilde $repo) push"
+  print
+  spoke=1
+fi
+
+if (( behind )); then
+  if (( behind == 1 )); then
+    print -r -- "1 unfetched commit - on origin, not on this machine:"
+  else
+    print -r -- "$behind unfetched commits - on origin, not on this machine:"
+  fi
+  # Never `chezmoi update`: that is `git pull` *followed by* apply, which deletes
+  # any uncaptured edit in the same sweep. `pull` alone turns an unfetched change
+  # into an unapplied one, whose own block above then governs the safe apply.
+  print -r -- "    receive them: git -C $(tilde $repo) pull   (then chezmoi apply)"
+  print
+  spoke=1
+fi
+
+# Each quiet case gets one honest line, though the prompt field stays mute.
+#
+# `✓ in sync` is the only affirmative claim of safety this tool makes, so it is
+# made only where both axes were actually measured. An axis that could not be read
+# is not an axis that is clean, and the difference is the whole point: a target
+# whose chezmoi cannot look, or whose source is not a git repo at all, has no idea
+# whether it is safe and must not say that it is.
+typeset -a unmeasured
+
+(( local_measured )) || unmeasured+=( "drift state unknown - chezmoi status could not read this machine" )
+
+if [[ -z $repo ]]; then
+  unmeasured+=( "publication state unknown - $(tilde $src) is not a git repository" )
+elif [[ -z $upstream ]]; then
+  branch=$(git -C $repo rev-parse --abbrev-ref HEAD 2>/dev/null)
+  unmeasured+=( "publication state unknown - branch '$branch' has no upstream" )
+fi
+
+for u in $unmeasured; print -r -- $u
+
+if (( ! spoke && ! $#unmeasured )); then
+  print -r -- "✓ in sync - nothing to capture, apply, or publish"
+fi
+
+exit 0
