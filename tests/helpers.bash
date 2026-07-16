@@ -42,7 +42,10 @@ setup_target() {
   printf 'zshrc v1\n' >"$REPO/home/dot_zshrc"
   printf 'a v1\n' >"$REPO/home/dot_a"
   printf 'b v1\n' >"$REPO/home/dot_b"
-  # Outside the source root, so changing it moves the repo without touching $HOME.
+  printf 'c v1\n' >"$REPO/home/dot_c"
+  # Outside the source root: the repo's own content, delivered to no target. r* is
+  # scoped to the source root, so changing this moves the repo without raising the
+  # badge, and committing it moves the repo without touching $HOME.
   printf 'readme\n' >"$REPO/README.md"
 
   git -C "$REPO" add -A

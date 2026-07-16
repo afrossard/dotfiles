@@ -48,6 +48,25 @@ setup() { setup_target; }
   assert_badge "⌂r⇣1"
 }
 
+@test "r-star is the source root, not the whole repo" {
+  # The mark means "captured here, not committed" - the step between re-add and
+  # commit - and only the source root can hold a captured change. The repo's own
+  # docs and tests are edited constantly on the machine that develops it, and a
+  # badge lit most of the time is a badge the eye stops seeing.
+  printf 'notes\n' >>"$REPO/README.md"
+  mkdir -p "$REPO/docs/adr" "$REPO/tests"
+  printf 'an adr\n' >"$REPO/docs/adr/0007-something.md"
+  printf 'a test\n' >"$REPO/tests/something.bats"
+  assert_badge ""
+}
+
+@test "r-star still fires for a captured change in the source root" {
+  # The other half of the same decision: scoping it must not silence it.
+  printf 'edited in place\n' >"$HOME/.zshrc"
+  chezmoi re-add --force >/dev/null
+  assert_badge "⌂r*"
+}
+
 # --- the hop letter is shared within its group -------------------------------
 
 @test "both local marks share one l" {
@@ -69,16 +88,21 @@ setup() { setup_target; }
   # 4 behind: another machine pushes, and we fetch the refs.
   other_machine_pushes 4
   # 2 unapplied: committed in the source, not yet applied here.
-  printf 'a v2\n' >"$REPO/home/dot_a"
-  git -C "$REPO" commit -qam "change a"
   printf 'b v2\n' >"$REPO/home/dot_b"
   git -C "$REPO" commit -qam "change b"
+  printf 'c v2\n' >"$REPO/home/dot_c"
+  git -C "$REPO" commit -qam "change c"
   # 3 ahead: a third commit outside the source root, so it delivers nothing.
   printf 'local\n' >>"$REPO/README.md"
   git -C "$REPO" commit -qam "local commit"
-  # r*: uncommitted, and outside the source root so it adds no unapplied change.
-  printf 'uncommitted\n' >>"$REPO/README.md"
-  # 1 uncaptured: edited directly on the target.
+  # r*: an edit captured by re-add and not yet committed. This is what the mark
+  # means, and it leaves .a undrifted, so it adds no unapplied change. The re-add
+  # is scoped to .a: a bare `chezmoi re-add` would re-add every managed file and
+  # overwrite the committed .b and .c above with this target's older copies, which
+  # is the destroyed-work this indicator exists to warn about.
+  printf 'edited in place\n' >"$HOME/.a"
+  chezmoi re-add --force "$HOME/.a" >/dev/null
+  # 1 uncaptured: edited directly on the target, after the re-add above.
   printf 'edited in place\n' >"$HOME/.zshrc"
   assert_badge "⌂l⇡1⇣2r*⇡3⇣4"
 }
@@ -115,10 +139,11 @@ setup() { setup_target; }
 
 @test "no upstream drops only the marks it cannot measure" {
   git -C "$REPO" checkout -q -b experiment
-  printf 'edited in place\n' >"$HOME/.zshrc"   # l-up
   printf 'b v2\n' >"$REPO/home/dot_b"          # l-down, once committed
   git -C "$REPO" commit -qam "change b"
-  printf 'uncommitted\n' >>"$REPO/README.md"   # r-star
+  printf 'edited in place\n' >"$HOME/.a"       # r-star, once captured
+  chezmoi re-add --force "$HOME/.a" >/dev/null # scoped: a bare re-add eats .b
+  printf 'edited in place\n' >"$HOME/.zshrc"   # l-up
   assert_badge "⌂l⇡1⇣1r*"
 }
 

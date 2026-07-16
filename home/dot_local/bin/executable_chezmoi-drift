@@ -100,7 +100,15 @@ if [[ -n $repo ]]; then
   # uncommitted-but-captured change as unpublished, so it sits on the `r` side.
   # Untracked counts: `chezmoi add` of a new dotfile writes an untracked source file,
   # which is captured and published nowhere.
-  source_dirty=( ${(f)"$(git -C $repo status --porcelain 2>/dev/null)"} )
+  #
+  # Scoped to the source root, not the whole repo. This mark means "captured here,
+  # not committed" - the step between `re-add` and `commit` - and only the source
+  # root can hold a captured change. The repo also holds its own docs, ADRs and
+  # tests, and on the machine that develops it those are edited constantly; letting
+  # them raise the badge would leave it lit most of the time on the one target that
+  # matters, which trains the eye to ignore it. Unpublished commits stay repo-wide:
+  # once committed, anything here is content that should reach origin.
+  source_dirty=( ${(f)"$(git -C $repo status --porcelain -- $src 2>/dev/null)"} )
   source_dirty=( ${source_dirty:#} )
 
   # The branch name is only ever spoken by the explainer, so it is read there
