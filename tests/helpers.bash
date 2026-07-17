@@ -126,6 +126,78 @@ badge_colour() {
     perl -ne 'print $1 if /(\e\[[0-9;]*m)[^\e]*⌂/'
 }
 
+# The other seam: not the drift indicator against a remote, but the whole home/
+# tree delivered onto a throwaway $HOME the way install.sh delivers it on a new
+# machine, minus the clone. These tests assert on the tree chezmoi wrote and the
+# shell it configured - a mode, a symlink target, a sourced drop-in - never on how
+# chezmoi computed them. No git origin: nothing here is about drift.
+#
+# prepare_home stops one step short of applying, so a test can pre-write a target
+# and then watch what apply does to a file chezmoi did not write.
+prepare_home() {
+  export HOME="$BATS_TEST_TMPDIR/home"
+  export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/cache"
+  export GIT_CONFIG_GLOBAL="$BATS_TEST_TMPDIR/gitconfig"
+  : >"$GIT_CONFIG_GLOBAL"
+  mkdir -p "$HOME"
+
+  SRC="$BATS_TEST_TMPDIR/src"
+  # The trailing /. copies home/'s contents, dotfiles included, so .chezmoi.toml.tmpl
+  # comes along. .chezmoiroot lives at the repo root, above this source, and is not
+  # needed once SRC is itself the source root.
+  mkdir -p "$SRC"
+  cp -R "$PROJECT_ROOT/home/." "$SRC/"
+
+  # init persists sourceDir into the target's own chezmoi.toml, so the bare apply
+  # below - and any bare chezmoi a test runs - finds the source without --source.
+  chezmoi init --source="$SRC" >/dev/null
+}
+
+apply_home() {
+  prepare_home
+  chezmoi apply >/dev/null
+}
+
+# Runs the delivered ~/.zshrc in a fresh non-interactive zsh and prints whatever the
+# probe leaves on stdout. -f skips zsh's own startup files so only ~/.zshrc is under
+# test, while the file itself is reached exactly as chezmoi wrote it. stdin is closed:
+# this is the no-TTY container case the compinit -i guard exists for, and a startup
+# that blocks on a prompt here would hang the test rather than pass it.
+run_zshrc() {
+  local probe="${1:-:}"
+  zsh -fc "source \$HOME/.zshrc >/dev/null 2>&1; $probe" </dev/null
+}
+
+# Every external command the delivered ~/.zshrc runs at startup, one per line, read
+# from xtrace. This is how a completion generator - an external tool spawned to emit
+# shell code, e.g. `kubectl completion zsh` - would show itself; zsh's own completion
+# system (compinit, the _tool autoloads, zstyle :completion:) runs no such command.
+zshrc_startup_trace() {
+  zsh -fxc 'source $HOME/.zshrc' </dev/null 2>&1 >/dev/null
+}
+
+# Bounds a command in wall-clock time and reports a hang distinctly. Exit 124 means
+# the alarm fired and the child was killed; any other status is the child's own. The
+# alternative, GNU coreutils `timeout`, is not present as `timeout` on macOS, and the
+# suite already leans on perl for a millisecond clock.
+with_timeout() {
+  local secs="$1"
+  shift
+  perl -e '
+    my $secs = shift @ARGV;
+    my $timed_out = 0;
+    my $pid = fork // die "fork: $!";
+    if ($pid == 0) { exec { $ARGV[0] } @ARGV or exit 127 }
+    local $SIG{ALRM} = sub { $timed_out = 1; kill "TERM", $pid };
+    alarm $secs;
+    waitpid $pid, 0;
+    my $st = $?;
+    alarm 0;
+    exit 124 if $timed_out;
+    exit($st >> 8);
+  ' "$secs" "$@"
+}
+
 # Assertions return non-zero explicitly rather than leaning on errexit. bats runs
 # under `env bash`, which on macOS is the system bash 3.2, and bash 3.2 does not
 # apply `set -e` to a bare `[[ ]]`: a failing one mid-test lets the test pass. That
@@ -159,6 +231,19 @@ assert_equal() {
     echo "actual:   $1"
   } >&2
   return 1
+}
+
+refute_matches() {
+  local pattern="$1" text="$2"
+  if printf '%s\n' "$text" | grep -qE "$pattern"; then
+    {
+      echo "expected no line matching: $pattern"
+      echo "matched:"
+      printf '%s\n' "$text" | grep -nE "$pattern"
+    } >&2
+    return 1
+  fi
+  return 0
 }
 
 assert_badge() {
