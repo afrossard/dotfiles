@@ -82,7 +82,12 @@ This repo must stay public: ephemeral targets bootstrap themselves by cloning it
 ## Tests
 
 The suite builds a throwaway `$HOME`, a real chezmoi source directory and a real git origin, then drives real `chezmoi`, `git` and `starship` against them.
-It asserts on the rendered prompt, because that is where this feature can fail silently: a custom module with no `when` never runs its command and looks exactly like a clean machine.
+There is one seam, the door a user walks through: the repo is applied into that `$HOME`, and every assertion is on what the user would then see.
+
+That door has two sides.
+On one, the rendered prompt: the drift indicator can fail silently, because a custom module with no `when` never runs its command and looks exactly like a clean machine, so the tests read the glyph starship actually prints rather than the script's stdout.
+On the other, the applied tree and the shell it configures: a file's mode, a symlink's target, and whether sourcing `~/.zshrc` wires in a tool exactly when that tool is installed.
+No test reaches inside a script or fakes a tool's output.
 
 No target needs any of this.
 `tests/` sits outside `home/`, so it is never delivered, and nothing here is installed on a machine that merely uses the dotfiles.
