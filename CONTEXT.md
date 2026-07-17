@@ -13,7 +13,10 @@ A dotfile need not begin with a `.`, and need not sit directly in `$HOME`.
 Explicitly **not** dotfiles:
 
 - **Binaries and packages.** A file cannot install `kubectl`. Tool installation is the concern of the base image, not this repo.
-- **Editor GUI state.** Application-managed settings that the application rewrites at will.
+- **Machine-local and session state.** A value true of one machine or one moment rather than of the user: a window's zoom level, a per-machine path, the model a tool is pointed at right now.
+That an application rewrites a file at will does not by itself make its content this, and so does not by itself disqualify the file.
+A file whose content is authored configuration is a dotfile even when the application also rewrites it; VS Code's `settings.json` is one.
+A file that mixes the two in one place - like Claude Code's `settings.json`, which holds authored permissions beside the current model and other session state - cannot be owned whole, and stays out until it can be owned key by key.
 
 ## Target
 
