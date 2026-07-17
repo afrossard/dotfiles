@@ -1,0 +1,10 @@
+{
+  "remote.autoForwardPortsSource": "hybrid",
+  "git.confirmSync": false,
+  "git.autofetch": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+  },
+  "git.enableSmartCommit": true,
+  "editor.formatOnSave": true,
+}
