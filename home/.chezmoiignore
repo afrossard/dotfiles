@@ -1,0 +1,14 @@
+# The raw VS Code settings file is referenced by the symlink_ entries below,
+# never delivered as a target of its own (ADR-0007).
+vscode-settings.json
+
+# One content, two OS-specific paths: keep only the one this OS reads. The whole
+# per-OS Code subtree is ignored on the other OS, so no empty directory is created
+# there. Only the Code subtree is named; the shared Library and .config parents are
+# left alone.
+{{ if ne .chezmoi.os "darwin" }}
+Library/Application Support/Code
+{{ end }}
+{{ if ne .chezmoi.os "linux" }}
+.config/Code
+{{ end }}
