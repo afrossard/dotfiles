@@ -1,6 +1,6 @@
 # Run-time detection over render-time templating
 
-Config must behave differently on macOS and inside Linux devcontainers, chiefly because Homebrew lives at `/opt/homebrew` on one and `/home/linuxbrew/.linuxbrew` on the other, and because the 1Password SSH agent socket exists only on the Mac.
+Config must behave differently on macOS and inside Linux devcontainers, chiefly because Homebrew lives at `/opt/homebrew` on one and `/home/linuxbrew/.linuxbrew` on the other, and because the 1Password SSH agent socket sits at a different path on each.
 We ship one byte-identical file to every target and let it probe its environment as it executes, rather than rendering a per-target file beforehand.
 
 ## Considered options
