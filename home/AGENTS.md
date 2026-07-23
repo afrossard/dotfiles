@@ -16,6 +16,7 @@ These are common instructions for agents across all scenarios.
 - A repo's scope is bounded by its name. Do not bundle adjacent concerns into a repo because they are convenient to put there; propose a separate repo instead. A repo named `dotfiles` holds dotfiles, not container images or editor GUI state.
 - Do not invent numbered labels for concepts and then expect them to be tracked. Give concepts real names.
 - When asked to propose, show, or compare options, mock them up in prose and wait for a decision. Do not build a working prototype, edit repo files, or run the real tool to find out. Verifying a *tool's behaviour* by running it is still correct; presenting a *design* of symbols, wording, or layout is done by simulating the output.
+- Git hooks must reject non-conforming commits, never silently fix them. Formatters and linters run in `--check` mode in a pre-commit hook, not `--write` or `--fix`. Auto-fixing means the committed content differs from what was reviewed and staged. The developer runs the fix command themselves and commits again.
 
 ## Memory
 
