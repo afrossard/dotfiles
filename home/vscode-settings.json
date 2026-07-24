@@ -7,4 +7,5 @@
   },
   "git.enableSmartCommit": true,
   "editor.formatOnSave": true,
+  "editor.wordWrap": "on",
 }
