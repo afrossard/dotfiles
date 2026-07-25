@@ -5,10 +5,13 @@
   "git.enableSmartCommit": true,
   "editor.formatOnSave": true,
   "editor.wordWrap": "on",
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
   "[jsonc]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-  },
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
 }
