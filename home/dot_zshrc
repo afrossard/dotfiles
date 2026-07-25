@@ -37,6 +37,12 @@ unset zcompdump zcompstale
 
 export PATH="$HOME/.local/bin:$PATH"
 
+# Lets a migrated devcontainer's remoteEnv pass this repo's URL through to
+# dotfiles-bootstrap (container-base ADR-0007), since dotfiles.repository is
+# scope: machine and stays off until every consumer migrates - at which
+# point that setting replaces this export entirely (same ADR).
+export DOTFILES_REPO="https://github.com/afrossard/dotfiles.git"
+
 # Guarded on 1Password being installed rather than on its agent socket existing, so
 # that a stopped agent fails loudly with an agent error instead of silently handing
 # back a keyless shell.
