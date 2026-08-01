@@ -43,6 +43,15 @@ style = "yellow"
 [directory]
 style = "blue"
 
+# ssh_only is starship's own default; the agent runtime (container-base
+# ADR-0013/#34's -sandbox naming) is the one non-SSH case worth showing
+# hostname for, since it's the only signal that distinguishes the guest's
+# prompt from the host's - they clone the same repo, onto the same branch.
+[hostname]
+ssh_only = false
+format = "[$hostname]($style) "
+style = "bold yellow"
+
 [character]
 success_symbol = "[❯](purple)"
 error_symbol = "[❯](red)"
