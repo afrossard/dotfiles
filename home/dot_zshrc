@@ -52,6 +52,22 @@ unset op_dir
 
 alias ll='ls -al'
 
+# Prompts for a GitHub PAT and exports it as GH_TOKEN in this shell only. gh and its
+# credential helper favor GH_TOKEN over any stored `gh auth login`, so this scopes
+# auth to one shell/session instead of gh's global, host-wide login - useful for
+# giving an agent process a token limited to the one repo it should touch. A plain
+# function, not a script: exporting into the calling shell needs to run in it, not
+# in a child process. read -s never echoes and is never written to history.
+set-gh-token() {
+  emulate -L zsh
+  local token
+  print -n -u2 -- 'GitHub PAT: '
+  read -s token
+  print -u2
+  [[ -n $token ]] || { print -ru2 -- 'set-gh-token: empty token, not set'; return 1 }
+  export GH_TOKEN=$token
+}
+
 # starship is a tool, so installing it belongs to the target, not here (ADR-0001):
 #   brew install starship
 #   brew install font-fira-code-nerd-font
