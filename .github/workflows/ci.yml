@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats-core (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Install bats-core (macOS)
+        if: runner.os == 'macOS'
+        run: brew install bats-core
+
+      - name: Install chezmoi
+        run: |
+          sh -c "$(curl -fsSL https://get.chezmoi.io)" -- -b ~/.local/bin
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+
+      - name: Install starship
+        run: |
+          curl -sS https://starship.rs/install.sh | sh -s -- --yes -b ~/.local/bin
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+
+      - name: Run tests
+        run: bats tests/
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # home/dot_local/bin/executable_chezmoi-drift is a zsh script (#!/usr/bin/env -S zsh -f);
+      # shellcheck only supports sh/bash/dash/ksh and errors out (SC1071) on zsh, so it is
+      # intentionally excluded here.
+      - name: Run shellcheck
+        run: shellcheck install.sh
