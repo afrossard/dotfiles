@@ -13,11 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install bats-core (Ubuntu)
+      - name: Install bats-core and zsh (Ubuntu)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y bats
+          sudo apt-get install -y bats zsh
 
       - name: Install bats-core (macOS)
         if: runner.os == 'macOS'
