@@ -58,3 +58,51 @@ resolves_to() {
   run cat "$HOME/.claude/CLAUDE.md"
   assert_contains "agent instructions" "$output"
 }
+
+# A fake `gh` on PATH, standing in for the real one: `git credential fill` shells
+# out to whatever `gh` resolves to, and asserting on that call is how the shipped
+# config is proven to work without a real `gh auth login` in the test environment.
+stub_gh() {
+  mkdir -p "$BATS_TEST_TMPDIR/stubbin"
+  cat >"$BATS_TEST_TMPDIR/stubbin/gh" <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "auth" ] && [ "$2" = "git-credential" ]; then
+  cat >/dev/null
+  echo "username=x-access-token"
+  echo "password=stub-token"
+fi
+EOF
+  chmod +x "$BATS_TEST_TMPDIR/stubbin/gh"
+}
+
+@test "git resolves a credential helper for github after apply" {
+  apply_home
+  stub_gh
+  # apply_home isolates git with GIT_CONFIG_GLOBAL, which bypasses the file
+  # chezmoi just delivered; unset it so git falls back to its own default
+  # resolution of $HOME/.config/git/config, the way a real user meets it.
+  unset GIT_CONFIG_GLOBAL
+  run env PATH="$BATS_TEST_TMPDIR/stubbin:$PATH" \
+    bash -c 'printf "protocol=https\nhost=github.com\n" | git credential fill'
+  assert_contains "password=stub-token" "$output"
+}
+
+@test "a stale config.local does not suppress the tracked credential helper" {
+  apply_home
+  stub_gh
+  # The exact shape `gh auth setup-git` leaves behind: an empty `helper =`
+  # reset line, then a helper pinned to an absolute path from another target.
+  mkdir -p "$HOME/.config/git"
+  cat >"$HOME/.config/git/config.local" <<'EOF'
+[credential]
+	helper =
+	helper = !/nonexistent/gh auth git-credential
+EOF
+  unset GIT_CONFIG_GLOBAL
+  run env PATH="$BATS_TEST_TMPDIR/stubbin:$PATH" \
+    bash -c 'printf "protocol=https\nhost=github.com\n" | git credential fill'
+  # The stale absolute-path helper runs first and fails to resolve; the
+  # tracked block sits after [include], so git still falls through to it
+  # rather than treating the failed stale helper as the final answer.
+  assert_contains "password=stub-token" "$output"
+}

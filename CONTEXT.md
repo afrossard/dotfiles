@@ -50,6 +50,12 @@ An untracked, machine-unique file that a tracked config file sources if it exist
 The escape hatch for divergent *values*, which run-time detection cannot express.
 Never committed. Absence is always valid.
 
+## Push credential
+
+What git needs to deliver work as a pull request: something `git push` over HTTPS can present to GitHub.
+Supplied by configuration - the credential helper this repo ships - rather than by `gh`'s own token store, and therefore subject to the apply that the token store is not.
+*Avoid*: GitHub auth, GitHub login, which name the `gh` side, the half that never broke.
+
 ## Drift
 
 The state in which a tracked config file's content in the repo does not match the content in use on a durable target.

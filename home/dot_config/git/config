@@ -3,3 +3,13 @@
 	email = aurelien@frossard.cloud
 [include]
 	path = ~/.config/git/config.local
+# These credential blocks must stay after [include]. An empty `helper =` line
+# (the shape `gh auth setup-git` writes into config.local) resets the
+# accumulated helper list. Placed after the include, that reset only clears
+# what config.local set before it, so a stale config.local can add its own
+# helper without erasing this one. Placed before the include, the reset would
+# wipe this block out entirely. See docs/adr/0008-github-credential-helper-is-tracked.md.
+[credential "https://github.com"]
+	helper = !gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = !gh auth git-credential
