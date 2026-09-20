@@ -34,35 +34,6 @@ jobs:
           curl -sS https://starship.rs/install.sh | sh -s -- --yes -b ~/.local/bin
           echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
 
-      - name: Debug credential helper resolution
-        if: runner.os == 'Linux'
-        run: |
-          set -x
-          which gh git
-          gh --version || true
-          env | sort
-          mkdir -p /tmp/stubbin
-          cat > /tmp/stubbin/gh <<'SH'
-          #!/usr/bin/env bash
-          echo "STUB gh invoked: $*" >&2
-          if [ "$1" = "auth" ] && [ "$2" = "git-credential" ]; then
-            cat >/dev/null
-            echo "username=x-access-token"
-            echo "password=stub-token"
-          fi
-          SH
-          chmod +x /tmp/stubbin/gh
-          TMPHOME="$(mktemp -d)"
-          HOME="$TMPHOME" XDG_CACHE_HOME="$TMPHOME/cache" chezmoi init --source="$PWD/home" >/dev/null
-          HOME="$TMPHOME" chezmoi apply >/dev/null
-          echo "--- delivered git config ---"
-          cat "$TMPHOME/.config/git/config" || true
-          echo "--- resolved credential.helper ---"
-          HOME="$TMPHOME" git config --list --show-origin | grep -i credential || true
-          echo "--- credential fill ---"
-          HOME="$TMPHOME" env PATH="/tmp/stubbin:$PATH" \
-            bash -c 'printf "protocol=https\nhost=github.com\n" | git credential fill'
-
       - name: Run tests
         run: bats tests/
 

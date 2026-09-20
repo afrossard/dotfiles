@@ -19,6 +19,11 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 setup_target() {
   export HOME="$BATS_TEST_TMPDIR/home"
   export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/cache"
+  # Some environments (GitHub-hosted runners among them) export XDG_CONFIG_HOME
+  # pointing outside $HOME. Left alone, that env var - not $HOME - decides where
+  # git and chezmoi look for their config, so it must be pinned under the fake
+  # $HOME too or the test silently reads the real machine's config instead.
+  export XDG_CONFIG_HOME="$HOME/.config"
   export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com
   export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
   export GIT_CONFIG_GLOBAL="$BATS_TEST_TMPDIR/gitconfig"
@@ -137,6 +142,10 @@ badge_colour() {
 prepare_home() {
   export HOME="$BATS_TEST_TMPDIR/home"
   export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/cache"
+  # See the matching comment in setup_target: without this, a pre-set
+  # XDG_CONFIG_HOME (as on GitHub-hosted runners) makes git and chezmoi read the
+  # real machine's config instead of the one just delivered under the fake $HOME.
+  export XDG_CONFIG_HOME="$HOME/.config"
   export GIT_CONFIG_GLOBAL="$BATS_TEST_TMPDIR/gitconfig"
   : >"$GIT_CONFIG_GLOBAL"
   mkdir -p "$HOME"
