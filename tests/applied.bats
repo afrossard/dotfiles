@@ -59,6 +59,58 @@ resolves_to() {
   assert_contains "agent instructions" "$output"
 }
 
+@test "every agent skill is a link from ~/.claude/skills/<name> to ~/.agents/skills/<name>" {
+  # The real files live in ~/.agents/skills and Claude Code reaches them through a
+  # link, so the same files serve any other agent that reads ~/.agents. Claude Code
+  # finds a skill exactly one directory below ~/.claude/skills. Upstream files its
+  # skills under buckets (engineering/, productivity/); one left in its bucket lands
+  # on disk and is invisible to the agent, and nothing reports it. The frontmatter
+  # name must also be the directory's, or the skill is invoked by a name that is not
+  # the one delivered.
+  local dir name found=0
+  # No trailing slash on the glob: `*/` silently skips a dangling link, which is the
+  # one entry here that must be reported.
+  for dir in "$HOME"/.claude/skills/*; do
+    name="$(basename "$dir")"
+    [ -L "$dir" ] || {
+      echo "$name is not a link into ~/.agents/skills" >&2
+      return 1
+    }
+    assert_equal "$(resolves_to "$dir")" "$(resolves_to "$HOME/.agents/skills/$name")" || return 1
+    [ -f "$dir/SKILL.md" ] || {
+      echo "$name has no SKILL.md: a dangling link, or a skill nested one level too deep" >&2
+      return 1
+    }
+    awk 'NR == 1 && /^---$/ { f = 1; next } f && /^---$/ { exit } f' "$dir/SKILL.md" |
+      grep -qx "name: $name" || {
+      echo "$name/SKILL.md does not declare 'name: $name' in its frontmatter" >&2
+      return 1
+    }
+    found=$((found + 1))
+  done
+  # An empty glob would pass the loop above vacuously.
+  [ "$found" -gt 0 ] || {
+    echo "no skill was delivered under ~/.claude/skills" >&2
+    return 1
+  }
+  # The other direction: a skill whose files were delivered with no link to them is
+  # on disk and invisible to Claude Code, and the loop above never looks at it.
+  for dir in "$HOME"/.agents/skills/*/; do
+    name="$(basename "$dir")"
+    [ -L "$HOME/.claude/skills/$name" ] || {
+      echo "$name is in ~/.agents/skills but has no link in ~/.claude/skills" >&2
+      return 1
+    }
+  done
+}
+
+@test "a skill's companion files arrive with it" {
+  # SKILL.md points at sibling files by name (setup-matt-pocock-skills names its
+  # issue-tracker templates); a skill delivered without them is a broken reference.
+  [ -f "$HOME/.claude/skills/setup-matt-pocock-skills/issue-tracker-github.md" ]
+  [ -f "$HOME/.claude/skills/domain-modeling/CONTEXT-FORMAT.md" ]
+}
+
 # A fake `gh` on PATH, standing in for the real one: `git credential fill` shells
 # out to whatever `gh` resolves to, and asserting on that call is how the shipped
 # config is proven to work without a real `gh auth login` in the test environment.
