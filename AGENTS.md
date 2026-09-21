@@ -20,6 +20,9 @@ Edit the right one.
 
 ## Agent skills
 
+The skills themselves are not in this repo's `.claude/` or `.agents/`: they are dotfiles, with the files vendored in `home/dot_agents/skills/`, linked from `home/dot_claude/skills/` (ADR-0009).
+The sections below are the per-repo configuration those skills read.
+
 ### Issue tracker
 
 Issues live in `afrossard/dotfiles` GitHub Issues, managed with the `gh` CLI.
