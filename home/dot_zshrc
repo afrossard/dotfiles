@@ -6,7 +6,7 @@
 # probe rather than assume, and let absence be a missing feature rather than an
 # error (ADR-0002). The shell is named explicitly because $SHELL can still say bash
 # in a container whose login shell has not been changed yet.
-for brewbin in /opt/homebrew/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
+for brewbin in /opt/workbrew/bin/brew /opt/homebrew/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
   [[ -x $brewbin ]] && eval "$("$brewbin" shellenv zsh)" && break
 done
 unset brewbin
