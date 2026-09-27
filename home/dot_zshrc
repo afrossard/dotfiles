@@ -16,6 +16,11 @@ unset brewbin
 [[ -d /usr/local/share/zsh/site-functions ]] &&
   fpath=(/usr/local/share/zsh/site-functions $fpath)
 
+# Docker Desktop writes its own compdef-tagged completion file here; the tool may
+# be absent entirely (ADR-0002), so this is a directory probe, not an eval of a
+# completion generator (ADR-0006).
+[[ -d ~/.docker/completions ]] && fpath=(~/.docker/completions $fpath)
+
 # Completion functions are autoloaded from fpath. This file evaluates no tool's
 # completion generator and names no tool (ADR-0006). A bare compinit rescans fpath
 # and rewrites the dump; -C trusts an existing dump and skips both the rescan and
