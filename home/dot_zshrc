@@ -11,8 +11,16 @@ for brewbin in /opt/workbrew/bin/brew /opt/homebrew/bin/brew /home/linuxbrew/.li
 done
 unset brewbin
 
-# brew shellenv already prepends its own site-functions to fpath; this covers the
-# tools that install completions outside a Homebrew prefix.
+# brew shellenv prints nothing when brew is already first on PATH, which is the case
+# in a nested shell or under an image whose /etc/zsh/zshenv inlines shellenv without
+# its fpath line. So Homebrew's site-functions, holding _brew and the completions of
+# every formula, are put on fpath here rather than trusted to shellenv. -U drops the
+# duplicate when shellenv did add it.
+typeset -U fpath
+[[ -n $HOMEBREW_PREFIX && -d $HOMEBREW_PREFIX/share/zsh/site-functions ]] &&
+  fpath=($HOMEBREW_PREFIX/share/zsh/site-functions $fpath)
+
+# This covers the tools that install completions outside a Homebrew prefix.
 [[ -d /usr/local/share/zsh/site-functions ]] &&
   fpath=(/usr/local/share/zsh/site-functions $fpath)
 
