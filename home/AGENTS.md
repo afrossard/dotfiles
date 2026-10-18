@@ -19,6 +19,7 @@ These are common instructions for agents across all scenarios.
   Put adjacent concerns in a separate repo and propose it, even when bundling them is convenient.
   A repo named `dotfiles` holds dotfiles, not container images or editor GUI state.
 - Give concepts real names, because nothing tracks an invented numbered label.
+- Run Python through `uv` (`uv run`, `uv run --with <pkg>` for one-off dependencies), never a bare `python3`, which may not be installed.
 - When multiple open questions accumulate (e.g. after a code review or multi-part investigation), ask them one at a time, not bundled together.
   Wait for an answer before asking the next.
 
