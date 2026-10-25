@@ -43,6 +43,7 @@ Nothing chezmoi manages would then record it, so a new target would not receive 
   `THIRD-PARTY-NOTICES.md` at the repo root holds each upstream's license text.
   It sits outside `home/`, so it is not delivered to a target, and a new upstream adds a section there.
   A local edit to a vendored skill is overwritten by the next update, so a change worth keeping is sent upstream or re-applied after each update.
+  The one standing exception is the `matt-` prefix on skills that clash with a Claude Code built-in, which ADR-0010 records along with how to re-apply it.
 - **A new skill is two source entries,** its directory under `dot_agents/skills/` and a `symlink_<name>` beside the others under `dot_claude/skills/`.
   The test fails on either one missing: a directory with no link, or a link with no directory.
 - **A skill or file that upstream drops stays on existing targets.**
