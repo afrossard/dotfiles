@@ -96,7 +96,7 @@ ahead=0 behind=0 upstream='' branch=''
 
 if [[ -n $repo ]]; then
   # `re-add`'d here but not committed is a third boundary the two hops do not name:
-  # the source repo's working tree against its own HEAD. CONTEXT.md classes an
+  # the source repo's working tree against its own HEAD. GLOSSARY.md classes an
   # uncommitted-but-captured change as unpublished, so it sits on the `r` side.
   # Untracked counts: `chezmoi add` of a new dotfile writes an untracked source file,
   # which is captured and published nowhere.

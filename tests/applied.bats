@@ -108,7 +108,7 @@ resolves_to() {
   # SKILL.md points at sibling files by name (setup-matt-pocock-skills names its
   # issue-tracker templates); a skill delivered without them is a broken reference.
   [ -f "$HOME/.claude/skills/setup-matt-pocock-skills/issue-tracker-github.md" ]
-  [ -f "$HOME/.claude/skills/domain-modeling/CONTEXT-FORMAT.md" ]
+  [ -f "$HOME/.claude/skills/domain-modeling/GLOSSARY-FORMAT.md" ]
 }
 
 # A fake `gh` on PATH, standing in for the real one: `git credential fill` shells
