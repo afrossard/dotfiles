@@ -7,7 +7,8 @@ Each notice below is the license text of the upstream that the skills came from,
 ## mattpocock/skills
 
 Source: https://github.com/mattpocock/skills
-Vendored in `home/dot_agents/skills/`: `domain-modeling`, `grill-me`, `grill-with-docs`, `grilling`, `handoff`, `implement`, `improve-codebase-architecture`, `prototype`, `research`, `setup-matt-pocock-skills`, `to-spec`, `to-tickets`, `wait-what`, `wayfinder`, `writing-for-agents`.
+Vendored in `home/dot_agents/skills/`: `codebase-design`, `diagnosing-bugs`, `domain-modeling`, `grill-me`, `grill-with-docs`, `grilling`, `handoff`, `implement`, `improve-codebase-architecture`, `research`, `setup-matt-pocock-skills`, `tdd`, `to-spec`, `to-tickets`, `triage`, `wait-what`, `wayfinder`, `writing-for-agents`.
+Vendored under a `matt-` prefix (ADR-0010): `matt-code-review` (upstream `code-review`), `matt-prototype` (upstream `prototype`).
 
 ```text
 MIT License

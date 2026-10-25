@@ -21,6 +21,7 @@ Edit the right one.
 ## Agent skills
 
 The skills themselves are not in this repo's `.claude/` or `.agents/`: they are dotfiles, with the files vendored in `home/dot_agents/skills/`, linked from `home/dot_claude/skills/` (ADR-0009).
+A skill whose upstream name clashes with a Claude Code built-in is vendored as `matt-<name>` (ADR-0010).
 The sections below are the per-repo configuration those skills read.
 
 ### Issue tracker
