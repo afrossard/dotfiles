@@ -82,7 +82,7 @@ chezmoi apply    # deliver a repo change to $HOME
 ```
 
 Drift has two kinds needing opposite remedies, and each remedy destroys the other kind.
-Read `status`'s **first** column ([CONTEXT.md](CONTEXT.md) defines the terms).
+Read `status`'s **first** column ([GLOSSARY.md](GLOSSARY.md) defines the terms).
 
 | `status` | kind                                 | remedy           |
 | -------- | ------------------------------------ | ---------------- |

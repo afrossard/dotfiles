@@ -1,4 +1,4 @@
-# Context
+# Glossary
 
 Glossary for this repo.
 Terms are defined here only when their everyday meaning is ambiguous or misleading in this domain.
