@@ -24,6 +24,13 @@ typeset -U fpath
 [[ -d /usr/local/share/zsh/site-functions ]] &&
   fpath=(/usr/local/share/zsh/site-functions $fpath)
 
+# Tools installed per user, into ~/.local/bin, put their completions here. zsh
+# defines no per-user directory, so this mirrors /usr/local/share/zsh/site-functions
+# under XDG_DATA_HOME, a convention rather than a standard.
+usersitefns=${XDG_DATA_HOME:-$HOME/.local/share}/zsh/site-functions
+[[ -d $usersitefns ]] && fpath=($usersitefns $fpath)
+unset usersitefns
+
 # Docker Desktop writes its own compdef-tagged completion file here; the tool may
 # be absent entirely (ADR-0002), so this is a directory probe, not an eval of a
 # completion generator (ADR-0006).
