@@ -45,15 +45,22 @@ unset usersitefns
 # container build that has no TTY. -i ignores such a directory instead, so the cost
 # is a missing completion rather than a stalled shell. The remedy for an insecure
 # directory is `chmod -R go-w "$(brew --prefix)/share"`, applied to the target.
+# Workbrew runs Homebrew as its own service user, so every completion file under
+# its prefix is owned by neither root nor the login user, and compaudit flags such
+# a file whatever its mode. -i would drop them all and chmod cannot help, so on a
+# Workbrew target -u uses insecure directories and files instead. That user is the
+# machine's management agent and can already do more than a completion file could.
+zcompsecurity=-i
+[[ -x /opt/workbrew/bin/brew ]] && zcompsecurity=-u
 autoload -Uz compinit
 zcompdump=${ZDOTDIR:-$HOME}/.zcompdump
 zcompstale=(${zcompdump}(N.mh+24))
 if (( $#zcompstale )); then
-  compinit -i -d "$zcompdump"
+  compinit $zcompsecurity -d "$zcompdump"
 else
-  compinit -C -i -d "$zcompdump"
+  compinit -C $zcompsecurity -d "$zcompdump"
 fi
-unset zcompdump zcompstale
+unset zcompdump zcompstale zcompsecurity
 
 export PATH="$HOME/.local/bin:$PATH"
 
